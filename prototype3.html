@@ -1,0 +1,326 @@
+<!-- 
+    Name: Dipen Bantawa
+    UID: 2065901
+    Prototype 3
+ -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Weather Forecast</title>
+</head>
+
+<body>
+    <h1>
+        Weather in
+        <i>
+            <div id="loc" style="display: inline;"></div>
+            <div id="country" style="display:inline"></div>
+        </i>
+    </h1>
+
+    <!--Placeholder for Icon-->
+    <img id="img">
+    <!--Placeholder for the forecast-->
+    <div id="forecast"></div>
+    <!--Placeholer for cloudiness-->
+    <div id="cloud"></div>
+
+    <!--Table to show detailed forecast-->
+    <table id="details" border="1px">
+        <tr>
+            <td>
+                City:
+            </td>
+            <td id="city" align="center">
+                Fetching Data...
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Temperature:
+            </td>
+            <td id="temp" align="center">
+                Fetching Data...
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                Humidity:
+            </td>
+            <td id="humidity" align="center">
+                Fetching Data...
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Pressure:
+            </td>
+            <td id="pressure" align="center">
+                Fetching Data...
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Wind Speed:
+            </td>
+            <td id="wSpeed" align="center">
+                Fetching Data...
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Wind Direction:
+            </td>
+            <td id="wDire" align="center">
+                Fetching Data...
+            </td>
+        </tr>
+    </table>
+
+    <br>
+
+    <!-- shows when the data was updated on -->
+    <div style="display:inline">Updated on:
+        <p id="time" style="display:inline"> Fetching Data...</p>
+    </div>
+
+    <br>
+    <br>
+
+    <!-- search bar -->
+    <div id="sBar">
+        Search City: <input id="cityName" placeholder="City Name">
+        <button type="button" id="searchBtn" onclick="citySearch()">Search</button>
+    </div>
+</body>
+
+<!-- CSS -->
+<style>
+    /* Centering all elements in the html*/
+    
+    * {
+        background-color: black;
+        color: aliceblue;
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+<!-- /CSS -->
+
+<!-- JavaScript -->
+<script>
+    /* This function is used to get the city name from the text input box with the id "cityName" and call the main function with fetched value passed as a argument. */
+    function citySearch() {
+        // fetching the value from the "cityName" input box
+        const cityName = document.getElementById("cityName").value;
+
+        // calling the main function with the (cityName) as an argument
+        main(cityName)
+    }
+
+    /*
+        This function takes capitilizes the first word of the string.
+        It takes one argument str in the form String and passess out 
+        the result as String.       
+    */
+    function capitilize(str) {
+        var capitalizing = str.split(" ");
+
+        //using for loop to capitilize the first letter 
+        for (var i = 0; i < capitalizing.length; i++) {
+            capitalizing[i] = capitalizing[i].charAt(0).toUpperCase() + capitalizing[i].slice(1);
+        }
+
+        //joining the capitlized word to together with blankspace
+        var capitalized = capitalizing.join(" ");
+
+        return capitalized;
+    }
+
+    /*
+        This function is used to register the Google Service Worker for this website
+     */
+    function iniGSW() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('gsw.js').then(function(registration) {
+                    // Registration was successful
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, function(err) {
+                    // registration failed :(
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    }
+    /*
+        This is the main part of the weather app.
+        This function expects one parameter (name) as a string.
+    */
+    function main(name) {
+
+        iniGSW(); // calling the (iniGSW) function to register the Service Worker
+
+        /*
+            If the (when) variable is not null in the localStorage and if the data uploaded
+            in the localStorage is updated within 5 Minute than fetch the data from the
+            localStorage and write in the html to its respective id
+        */
+        if (localStorage.when != null &&
+            parseInt(localStorage.when) + 300000 > Date.now()) {
+            let freshness = Math.round((Date.now() - localStorage.when) / 1000) + " second(s)";
+
+            /* Writing in the HTML with the data stored in the localStorage to its representive id and variables */
+            document.getElementById("loc").innerHTML = city;
+            document.getElementById("country").innerHTML = " ," + localStorage.country;
+            document.getElementById("city").innerHTML = localStorage.city;
+            document.getElementById("temp").innerHTML = localStorage.temp + "\u00B0C";
+            document.getElementById("forecast").innerHTML = "Forecast: " + capitilize(localStorage.forecast);
+            document.getElementById("img").src = "http://openweathermap.org/img/wn/" + localStorage.iconCode + ".png";;
+            document.getElementById("humidity").innerHTML = localStorage.humidity + "%";
+            document.getElementById("pressure").innerHTML = localStorage.pressure + " hPa";
+            document.getElementById("wSpeed").innerHTML = localStorage.wSpeed + "m/S";
+            document.getElementById("wDire").innerHTML = localStorage.wDire + "\u00B0 " + trueWD(wDid);
+            document.getElementById("cloud").innerHTML = "Cloudiness: " + localStorage.cloud + "%";
+            document.getElementById("time").innerHTML = localStorage.when;
+
+            // No local cache, access network
+        } else {
+            // storing the passed argument (name) in (citySearch) variable
+            const citySearch = name;
+
+            // fetching data from the my-api-client.php file
+            fetch("http://localhost/prototype-2/my-api-client.php?city=" + citySearch)
+                .then(response => response.json())
+                .then(response => {
+
+                    //console.log(response)
+
+                    // declaring variable for the current forecast
+                    let forecast = response.weather_description;
+                    // declaring variable for the city name
+                    let city = response.weather_city;
+                    // declaring variable for the humidity
+                    let humidity = response.weather_humidity;
+                    // declaring variable for pressuresure
+                    let pressure = response.weather_pressure;
+                    // declaring variable for the tempreture
+                    let temperature = response.weather_temperature;
+                    // declaring variable for wind speed
+                    let wSpeed = response.weather_windSpeed;
+                    // declaring variable for raw wind direction
+                    let wDid = response.weather_wind;
+                    // declaring variable for cloudiness
+                    let cloud = response.weather_cloudiness;
+                    // declaring variable for the timestamp
+                    let time = response.weather_when;
+                    // declaring variable for the weather icon
+                    let iconCode = response.icon_code;
+
+                    /* 
+                        This function converts the raw wind direction degree into direction.
+                        It takes one argument rawWD in the form of integer and 
+                        returns the value as string. 
+                    */
+                    function trueWD(rawWD) {
+                        if ((rawWD >= 0) && (rawWD <= 21)) {
+                            return "N";
+                        } else if ((rawWD > 20) && (rawWD <= 43)) {
+                            return "NNE";
+                        } else if ((rawWD > 45) && (rawWD <= 66)) {
+                            return "NE";
+                        } else if ((rawWD > 67) && (rawWD <= 88)) {
+                            return "ENE";
+                        } else if ((rawWD > 89) && (rawWD <= 101)) {
+                            return "E";
+                        } else if ((rawWD > 102) && (rawWD <= 133)) {
+                            return "ESE";
+                        } else if ((rawWD > 134) && (rawWD <= 156)) {
+                            return "SE";
+                        } else if ((rawWD > 157) && (rawWD <= 178)) {
+                            return "SSE";
+                        } else if ((rawWD > 179) && (rawWD <= 200)) {
+                            return "S";
+                        } else if ((rawWD > 201) && (rawWD <= 223)) {
+                            return "SSW";
+                        } else if ((rawWD > 224) && (rawWD <= 246)) {
+                            return "SW";
+                        } else if ((rawWD > 247) && (rawWD <= 268)) {
+                            return "WSW";
+                        } else if ((rawWD > 269) && (rawWD <= 290)) {
+                            return "W";
+                        } else if ((rawWD > 291) && (rawWD <= 313)) {
+                            return "WNW";
+                        } else if ((rawWD > 314) && (rawWD <= 336)) {
+                            return "NW";
+                        } else if ((rawWD > 337) && (rawWD <= 359)) {
+                            return "NNW";
+                        }
+                    }
+
+                    /* Writing in the HTML with its representive id and variables*/
+                    document.getElementById("loc").innerHTML = city;
+                    document.getElementById("country").innerHTML = " ," + response.country;
+                    document.getElementById("city").innerHTML = city;
+                    document.getElementById("temp").innerHTML = temperature + "\u00B0C";
+                    document.getElementById("forecast").innerHTML = "Forecast: " + capitilize(forecast);
+                    document.getElementById("img").src = "http://openweathermap.org/img/wn/" + iconCode + ".png";;
+                    document.getElementById("humidity").innerHTML = humidity + "%";
+                    document.getElementById("pressure").innerHTML = pressure + " hPa";
+                    document.getElementById("wSpeed").innerHTML = wSpeed + "m/S";
+                    document.getElementById("wDire").innerHTML = wDid + "\u00B0 " + trueWD(wDid);
+                    document.getElementById("cloud").innerHTML = "Cloudiness: " + cloud + "%";
+                    document.getElementById("time").innerHTML = time;
+
+                    // Save new data to browser
+                    localStorage.city = city;
+                    localStorage.country = response.country;
+                    localStorage.when = time;
+                    localStorage.temp = temperature;
+                    localStorage.forecast = forecast;
+                    localStorage.iconCode = iconCode;
+                    localStorage.humidity = humidity;
+                    localStorage.pressure = pressure;
+                    localStorage.wSpeed = wSpeed;
+                    localStorage.wDire = wDid;
+                    localStorage.cloud = cloud;
+                })
+                // to catch the errors
+                .catch(err => {
+
+                    // Display errors in console
+                    alert("Error Occured: " + err);
+                    console.log("Error Occured: " + err);
+
+                    /*
+                        if the fetch data fails then it try to fetch data from the cached data
+                    */
+                    document.getElementById("loc").innerHTML = city;
+                    document.getElementById("country").innerHTML = " ," + localStorage.country;
+                    document.getElementById("city").innerHTML = localStorage.city;
+                    document.getElementById("temp").innerHTML = localStorage.temp + "\u00B0C";
+                    document.getElementById("forecast").innerHTML = "Forecast: " + capitilize(localStorage.forecast);
+                    document.getElementById("img").src = "http://openweathermap.org/img/wn/" + localStorage.iconCode + ".png";;
+                    document.getElementById("humidity").innerHTML = localStorage.humidity + "%";
+                    document.getElementById("pressure").innerHTML = localStorage.pressure + " hPa";
+                    document.getElementById("wSpeed").innerHTML = localStorage.wSpeed + "m/S";
+                    document.getElementById("wDire").innerHTML = localStorage.wDire + "\u00B0 " + trueWD(wDid);
+                    document.getElementById("cloud").innerHTML = "Cloudiness: " + localStorage.cloud + "%";
+                    document.getElementById("time").innerHTML = localStorage.when;
+                })
+        };
+    }
+
+    // calling the main() function by passing "Lexington-Fayatte" as an argument
+    main("Lexington-Fayette");
+</script>
+<!-- /JavaScript -->
+
+</html>
